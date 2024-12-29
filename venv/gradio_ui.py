@@ -13,10 +13,10 @@ model = genai.GenerativeModel()
 # Database connection function
 def get_db_connection():
     return mysql.connector.connect(
-        host=os.getenv('DB_HOST'),  # 'localhost'
-        user=os.getenv('DB_USER'),  # 'root'
-        password=os.getenv('DB_PASSWORD'),  # 'sasmitha'
-        database=os.getenv('DB_NAME')  # 'testing'
+        host=os.getenv('DB_HOST'),  
+        user=os.getenv('DB_USER'),  
+        password=os.getenv('DB_PASSWORD'),  
+        database=os.getenv('DB_NAME') 
     )
 
 # Function to handle queries related to the 'customer' and 'client' tables
@@ -44,7 +44,7 @@ def handle_database_query(user_input):
         return "Sorry, I don't understand the query."
 
 def handle_user_query(user_input, chatbot_state):
-    chatbot_state.append([user_input, None])  # Add user input to the chat state
+    chatbot_state.append([user_input, None])  
     return '', chatbot_state
 
 def generate_chatbot(chatbot: list[list[str, str]]) -> list[list[str, str]]:

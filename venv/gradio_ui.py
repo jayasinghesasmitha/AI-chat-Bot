@@ -1,129 +1,107 @@
 import os
+from dotenv import load_dotenv
 import gradio as gr
-import google.generativeai as genai
-import mysql.connector
-from dotenv import load_dotenv, find_dotenv
+from google.cloud import aiplatform
 
-load_dotenv(find_dotenv())
+# Load environment variables from .env file
+load_dotenv()
 
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+# Set up Google Cloud Vertex AI
+project_id = os.getenv("GOOGLE_PROJECT_ID")
+location = "us-central1"  # Change as per your region
+aiplatform.init(project=project_id, location=location)
 
-model = genai.GenerativeModel()
+# Vertex AI Model and Endpoint
+model_name = f"projects/{project_id}/locations/{location}/publishers/google/models/gemini"
 
-# Database connection function
-def get_db_connection():
-    return mysql.connector.connect(
-        host=os.getenv('DB_HOST'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_NAME')
-    )
+def analyze_image(image_path):
+    """
+    Send an image to Google Gemini and retrieve analysis.
+    """
+    try:
+        endpoint = aiplatform.Endpoint(endpoint_name=model_name)
 
-# Function to handle queries related to the 'customer' and 'client' tables
-def handle_database_query(user_input):
-    query = None
-    if "customer" in user_input.lower():
-        query = "SELECT * FROM customer"
-    elif "client" in user_input.lower():
-        query = "SELECT * FROM client"
+        with open(image_path, "rb") as f:
+            image_bytes = f.read()
 
-    if query:
-        try:
-            connection = get_db_connection()
-            cursor = connection.cursor()
-            cursor.execute(query)
-            result = cursor.fetchall()
-            connection.close()
-            formatted_result = "\n".join([f"ID: {row[0]}, Name: {row[1]}, Mobile: {row[2]}" for row in result])
-            return formatted_result
-        except Exception as e:
-            return f"Error querying database: {e}"
-    else:
-        return "Sorry, I don't understand the query."
-
-def handle_user_query(user_input, chatbot_state):
-    chatbot_state.append([user_input, None])
-    return '', chatbot_state
-
-def generate_chatbot(chatbot: list[list[str, str]]) -> list[list[str, str]]:
-    formatted_chatbot = []
-    if len(chatbot) == 0:
-        return formatted_chatbot
-    for ch in chatbot:
-        formatted_chatbot.append(
+        # Prepare the payload
+        instances = [
             {
-                "role": "user",
-                "parts": [ch[0]]
+                "image": {"bytesBase64Encoded": image_bytes.decode("ISO-8859-1")},
+                "parameters": {"temperature": 0.5},  # Adjust parameters as needed
             }
-        )
-        formatted_chatbot.append(
-            {
-                "role": "model",
-                "parts": [ch[1]]
-            }
-        )
-    return formatted_chatbot
+        ]
 
-def handle_gemini_response(chatbot):
-    query = chatbot[-1][0]
-    if 'customer' in query.lower() or 'client' in query.lower():
-        db_response = handle_database_query(query)
-        chatbot[-1][1] = db_response
-    else:
-        formatted_chatbot = generate_chatbot(chatbot[:-1])
-        chat = model.start_chat(history=formatted_chatbot)
-        response = chat.send_message(query)
-        chatbot[-1][1] = response.text
-    return chatbot
+        # Call the Gemini model for image analysis
+        response = endpoint.predict(instances=instances)
+        return response.predictions[0]["content"]
 
-# Function to reset the chatbot
+    except Exception as e:
+        return f"Error analyzing image: {e}"
+
+def handle_user_input(user_input, chatbot_state):
+    """
+    Process user input and add to chatbot history.
+    """
+    chatbot_state.append([user_input, None])  # Add user's query to the chatbot state
+    return "", chatbot_state
+
+def handle_chat_response(chatbot_state, image_path=None):
+    """
+    Generate a response using Google Gemini, considering uploaded image or text input.
+    """
+    try:
+        last_query = chatbot_state[-1][0]  # Get the latest user query
+
+        # If an image is provided, analyze it
+        if image_path:
+            image_analysis = analyze_image(image_path)
+            chatbot_state[-1][1] = f"Image Analysis:\n{image_analysis}"
+        else:
+            # Handle text-based queries
+            endpoint = aiplatform.Endpoint(endpoint_name=model_name)
+            instances = [{"text": last_query, "parameters": {"temperature": 0.5}}]
+            response = endpoint.predict(instances=instances)
+            chatbot_state[-1][1] = response.predictions[0]["content"]
+
+    except Exception as e:
+        chatbot_state[-1][1] = f"Error: {e}"
+
+    return chatbot_state
+
 def reset_chat():
-    return []
+    """
+    Reset the chat history and uploaded image.
+    """
+    return [], None  # Clear chat history and image
 
-# Main Gradio interface
+# Gradio UI Setup
 with gr.Blocks() as demo:
-    gr.Markdown("<h1 style='text-align:center;'>Chat with database</h1>")
-    gr.Markdown("<p style='text-align:center;'>An interactive chatbot to help you with database queries and general questions!</p>")
+    gr.Markdown("<h1 style='text-align: center;'>Chat with Gemini AI</h1>")
+    gr.Markdown("<p style='text-align: center;'>Upload an image and ask questions about it, or simply chat!</p>")
 
-    chatbot = gr.Chatbot(
-        label='Chat with Gemini',
-        show_label=True,
-        avatar_images=("https://img.icons8.com/fluency/48/chatbot.png", "https://img.icons8.com/color/48/user-male-circle.png"),
-        bubble_full_width=False,
-    )
-    msg = gr.Textbox(
-        label="Your Query",
-        placeholder="Type a question here...",
-        lines=1,
-        max_lines=2
-    )
-    clear = gr.ClearButton([msg, chatbot], value="Reset Chat")
+    chatbot = gr.Chatbot()
+    message = gr.Textbox(placeholder="Type your query here...")
+    image = gr.Image(type="filepath", label="Upload an Image (optional)")
+    clear_button = gr.Button("Reset Chat")
 
-    chatbot_state = gr.State(value=[])
+    chatbot_state = gr.State([])  # State to store chatbot history
+    uploaded_image = gr.State(None)  # State to store the uploaded image
 
-    # Submit the user input and update the chatbot
-    msg.submit(
-        handle_user_query,
-        [msg, chatbot_state],
-        [msg, chatbot]
+    # Handle user input
+    message.submit(
+        handle_user_input, [message, chatbot_state], [message, chatbot]
     ).then(
-        handle_gemini_response,
-        [chatbot_state],
-        [chatbot]
+        handle_chat_response, [chatbot_state, uploaded_image], [chatbot]
     )
 
-    gr.Examples(
-        examples=[
-            "Show all customers",
-            "Show all clients",
-            "What is AI?",
-            "What is database?"
-        ],
-        inputs=msg,
-    )
+    # Handle image upload
+    image.upload(lambda img: img, inputs=image, outputs=uploaded_image)
 
-    gr.Markdown("<p style='text-align:center;'>Powered by <b>Google Gemini</b> and <b>MySQL</b></p>")
+    # Reset chat functionality
+    clear_button.click(reset_chat, [], [chatbot, uploaded_image])
+
+    gr.Markdown("<p style='text-align: center;'>Powered by Google Gemini</p>")
 
 if __name__ == "__main__":
-    demo.queue()
     demo.launch()

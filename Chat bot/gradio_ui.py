@@ -6,7 +6,6 @@ from gtts import gTTS
 from pydub import AudioSegment
 from pydub.playback import play
 import speech_recognition as sr
-import keyboard # type: ignore
 from dotenv import load_dotenv, find_dotenv
 
 # Load environment variables
@@ -84,11 +83,10 @@ def record_and_transcribe():
         try:
             # Adjust for ambient noise
             recognizer.adjust_for_ambient_noise(source, duration=1)
-            print("Listening... Speak now. Recording for up to 10 minutes.")
+            print("Listening... Speak now. ")
             
-            # Record audio with a 10-minute time limit
             print("Recording... Please speak.")
-            audio = recognizer.listen(source, timeout=600, phrase_time_limit=600)  # 600 seconds = 10 minutes
+            audio = recognizer.listen(source, timeout=6, phrase_time_limit=6) 
 
             # Process the audio and recognize speech
             print("Processing your input...")
@@ -125,7 +123,7 @@ with gr.Blocks(css="""
     body {
         font-family: 'Poppins', sans-serif; /* Stylish font */
         background: linear-gradient(135deg, #74ebd5, #ACB6E5); /* Attractive gradient */
-        color: #333333;
+        color: #333333; 
     }
     .gradio-container {
         font-family: 'Poppins', sans-serif;
@@ -145,7 +143,7 @@ with gr.Blocks(css="""
         transform: scale(0.95);
     }
 """) as demo:
-    gr.Markdown("<h1 style='text-align:center; color:white;'>✨ Enhanced Chatbot Interface ✨</h1>")
+    gr.Markdown("<h1 style='text-align:center; color:white;'>✨ AI chatbot ✨</h1>")
     gr.Markdown("<p style='text-align:center; color:white;'>Chat, speak, or review your chat history with ease!</p>")
 
     chatbot = gr.Chatbot(
@@ -211,4 +209,4 @@ with gr.Blocks(css="""
 
 if __name__ == "__main__":
     demo.queue()
-    demo.launch()
+    demo.launch(share=True)

@@ -25,7 +25,7 @@ This project is a chat bot that leverages Python, Gradio, and voice recognition 
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/chat-bot-voice-recognition.git
+   git clone https://github.com/jayasinghesasmitha/chat-bot-voice-recognition.git
    cd chat-bot-voice-recognition
    ```
 
@@ -77,10 +77,6 @@ This project is licensed under the MIT License.
 - **Author:** Sasmitha Jayasinghe
 - **Email:** sasmithajayasinghe2002@gmail.com
 - **GitHub:** jayasinghesasmitha
-
----
-
-Thank you for checking out this project! If you have any questions, feel free to reach out.
 ```
 
 Feel free to customize this template with specific details about your project. This README file should give a comprehensive overview and help others understand how to set up and use your chat bot. Once you've created this README file, you can push it to your GitHub repository. 🚀✨

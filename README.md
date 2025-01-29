@@ -77,8 +77,3 @@ This project is licensed under the MIT License.
 - **Author:** Sasmitha Jayasinghe
 - **Email:** sasmithajayasinghe2002@gmail.com
 - **GitHub:** jayasinghesasmitha
-```
-
-Feel free to customize this template with specific details about your project. This README file should give a comprehensive overview and help others understand how to set up and use your chat bot. Once you've created this README file, you can push it to your GitHub repository. 🚀✨
-
-If you need any further assistance or more details, just let me know!

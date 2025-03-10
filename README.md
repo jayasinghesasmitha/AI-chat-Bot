@@ -49,7 +49,9 @@ This project is a chat bot that leverages Python, Gradio, and voice recognition 
 
 5. **Run the application:**
    ```bash
-   python app.py
+   cd AI-chat-Bot
+   cd Chat bot
+   uvicorn run:app --reload
    ```
 
 ## Usage
